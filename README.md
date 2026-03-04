@@ -15,7 +15,7 @@ Real-time Crypto News → Token Impact → Volatility Prediction
 - **Volatility Prediction** — LOW / MEDIUM / HIGH badges with color coding
 - **Live Dashboard** — Auto-refresh every 5 minutes, filterable by volatility
 - **Token Pages** — Per-token news history and average impact
-- **Vercel Cron** — Auto-runs every 5 minutes, fully serverless
+- **Manual Sync API** — Fetch on demand from dashboard, no paid schedulers
 
 ---
 
@@ -33,7 +33,7 @@ npm install
 
 ```bash
 cp .env.example .env.local
-# Fill in your DATABASE_URL, CRYPTOPANIC_API_KEY, CRON_SECRET
+# Fill in your DATABASE_URL and CRYPTOPANIC_API_KEY
 ```
 
 ### 3. Setup Database
@@ -87,7 +87,6 @@ Go to your project → Settings → Environment Variables and add:
 - `DATABASE_URL` — your Neon/Supabase connection string
 - `DIRECT_URL` — same as DATABASE_URL (or direct connection URL for Supabase)
 - `CRYPTOPANIC_API_KEY` — from cryptopanic.com (free tier)
-- `CRON_SECRET` — random secret for cron auth
 
 ---
 
@@ -97,7 +96,7 @@ Go to your project → Settings → Environment Variables and add:
 talons-news/
 ├── app/
 │   ├── api/
-│   │   ├── cron/fetch-news/route.ts  ← Main cron job
+│   │   ├── news/sync/route.ts        ← Manual news sync endpoint
 │   │   ├── news/route.ts             ← News list API
 │   │   ├── news/[id]/route.ts        ← News detail API
 │   │   └── tokens/
@@ -125,7 +124,6 @@ talons-news/
 ├── prisma/
 │   └── schema.prisma                 ← Database schema
 ├── schema.sql                        ← Raw SQL schema
-├── vercel.json                       ← Cron config (every 5 min)
 ├── .env.example
 └── README.md
 ```
@@ -161,7 +159,7 @@ Volatility:
 | Decrypt RSS | News | Unlimited |
 | Blockworks RSS | News | Unlimited |
 | [Neon](https://neon.tech) | PostgreSQL | 3GB free |
-| [Vercel](https://vercel.com) | Hosting + Cron | Free tier |
+| [Vercel](https://vercel.com) | Hosting | Free tier |
 
 ---
 

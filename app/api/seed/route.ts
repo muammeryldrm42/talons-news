@@ -4,7 +4,7 @@ import { TOP_TOKENS } from '@/lib/tokens-list'
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${process.env.SEED_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

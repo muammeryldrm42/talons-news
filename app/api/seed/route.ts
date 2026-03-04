@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
     for (const token of TOP_TOKENS) {
       await prisma.token.upsert({
         where:  { symbol: token.symbol },
-        update: { keywords: token.keywords as string[], name: token.name },
-        create: { symbol: token.symbol, name: token.name, keywords: token.keywords as string[] },
+        update: { keywords: [...token.keywords], name: token.name },
+        create: { symbol: token.symbol, name: token.name, keywords: [...token.keywords] },
       })
       seeded++
     }

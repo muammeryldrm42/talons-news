@@ -46,7 +46,6 @@ const NARRATIVE_KEYWORDS: Record<string, number> = {
   mainnet:      7,
   testnet:      4,
   vulnerability:9,
-  exploit:      10,
 }
 
 export interface SentimentResult {

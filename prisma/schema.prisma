@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model News {
+  id             String   @id @default(cuid())
+  title          String
+  content        String?
+  source         String
+  url            String   @unique
+  urlHash        String   @unique
+  publishedAt    DateTime
+  sentimentScore Float    @default(0)
+  impactScore    Float    @default(0)
+  volatility     Volatility @default(LOW)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tokenImpacts   NewsTokenImpact[]
+
+  @@index([publishedAt(sort: Desc)])
+  @@index([impactScore(sort: Desc)])
+  @@map("news")
+}
+
+model Token {
+  id               String   @id @default(cuid())
+  name             String
+  symbol           String   @unique
+  keywords         String[]
+  marketCap        Float?
+  liquidityEstimate Float?
+  rank             Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tokenImpacts     NewsTokenImpact[]
+
+  @@index([symbol])
+  @@map("tokens")
+}
+
+model NewsTokenImpact {
+  id                String   @id @default(cuid())
+  newsId            String
+  tokenId           String
+  confidenceScore   Float    @default(0)
+  expectedVolatility Volatility @default(LOW)
+  createdAt         DateTime @default(now())
+
+  news  News  @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  token Token @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@unique([newsId, tokenId])
+  @@index([newsId])
+  @@index([tokenId])
+  @@map("news_token_impacts")
+}
+
+enum Volatility {
+  LOW
+  MEDIUM
+  HIGH
+}

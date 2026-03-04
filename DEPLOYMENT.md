@@ -51,7 +51,6 @@ cp .env.example .env.local
 # Edit .env.local with your values:
 # DATABASE_URL=<your neon/supabase connection string>
 # CRYPTOPANIC_API_KEY=<your key>
-# CRON_SECRET=<generate: openssl rand -hex 32>
 
 # Generate Prisma client
 npm run db:generate
@@ -70,12 +69,7 @@ Visit: http://localhost:3000
 ## Step 4: Trigger First News Fetch (Local)
 
 ```bash
-curl http://localhost:3000/api/cron/fetch-news
-```
-
-Or set `CRON_SECRET` and use:
-```bash
-curl -H "Authorization: Bearer YOUR_CRON_SECRET" http://localhost:3000/api/cron/fetch-news
+curl -X POST http://localhost:3000/api/news/sync
 ```
 
 ---
@@ -93,7 +87,6 @@ vercel
 # Follow prompts, then set env vars:
 vercel env add DATABASE_URL
 vercel env add CRYPTOPANIC_API_KEY
-vercel env add CRON_SECRET
 
 # Redeploy with env vars
 vercel --prod
@@ -107,24 +100,10 @@ vercel --prod
 
 ---
 
-## Step 6: Configure Cron Job
+## Step 6: Optional Scheduled Calls (No Cron Required)
 
-The `vercel.json` file already configures the cron:
-```json
-{
-  "crons": [{
-    "path": "/api/cron/fetch-news",
-    "schedule": "*/5 * * * *"
-  }]
-}
-```
-
-**Important:** Vercel Cron sends requests with `Authorization: Bearer YOUR_CRON_SECRET`
-Make sure `CRON_SECRET` is set in Vercel environment variables.
-
-For the free Vercel plan, cron jobs run once per day minimum. Upgrade to Pro for 5-minute intervals.
-
----
+This project works on Vercel free plan **without cron**.
+Use the dashboard **REFRESH** button or call the sync API from any external uptime/automation service if needed.
 
 ## Environment Variables Reference
 
@@ -132,7 +111,6 @@ For the free Vercel plan, cron jobs run once per day minimum. Upgrade to Pro for
 |----------|----------|-------------|
 | `DATABASE_URL` | ✅ Yes | PostgreSQL connection string |
 | `CRYPTOPANIC_API_KEY` | ✅ Yes | CryptoPanic free API token |
-| `CRON_SECRET` | ✅ Yes | Random secret for cron auth |
 | `COINGECKO_API_KEY` | ❌ Optional | CoinGecko demo API key |
 | `NEXT_PUBLIC_APP_URL` | ❌ Optional | Your deployment URL |
 
@@ -151,7 +129,7 @@ talons-news/
 │   ├── tokens/page.tsx             # Token directory
 │   ├── tokens/[symbol]/page.tsx    # Token intelligence page
 │   └── api/
-│       ├── cron/fetch-news/route.ts   # Scheduled news fetcher
+│       ├── news/sync/route.ts         # Manual news sync endpoint
 │       ├── news/route.ts              # News listing API
 │       ├── news/[id]/route.ts         # Single news API
 │       └── tokens/route.ts            # Tokens API
@@ -170,7 +148,6 @@ talons-news/
 │   └── matching/index.ts           # Token entity extractor
 ├── prisma/schema.prisma            # Database schema
 ├── schema.sql                      # Raw SQL schema
-├── vercel.json                     # Cron + function config
 └── .env.example                    # Env vars template
 ```
 
@@ -199,7 +176,6 @@ Volatility:
 |---------|-----------|--------------|
 | Neon PostgreSQL | 512 MB storage | ~50MB/month |
 | Vercel Functions | 100GB-hours/month | Well within limits |
-| Vercel Cron | 1/day (free) / unlimited (Pro) | 1-day or 5-min |
 | CryptoPanic | 1000 req/day | ~288/day at 5-min |
 | CoinGecko | 30 req/min | Occasional enrichment |
 
@@ -211,13 +187,13 @@ Volatility:
 → Check `DATABASE_URL` is set correctly with `?sslmode=require`
 
 **No articles appearing**  
-→ Trigger cron manually: `curl /api/cron/fetch-news`  
+→ Trigger sync manually: `curl -X POST /api/news/sync`  
 → Check Vercel Function logs for errors
 
 **RSS feeds failing**
 → Some feeds may block serverless IPs; CryptoPanic API is the primary source
 
-**Cron not running**
+**Sync not running**
 → Vercel free plan: manual trigger or upgrade to Pro for scheduled runs
 
 ---

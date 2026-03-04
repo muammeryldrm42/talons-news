@@ -20,7 +20,7 @@ export function Header() {
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
-      await fetch('/api/cron/fetch-news')
+      await fetch('/api/news/sync', { method: 'POST' })
     } finally {
       setTimeout(() => setRefreshing(false), 1500)
     }

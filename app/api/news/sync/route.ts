@@ -1,51 +1,31 @@
-// ============================================================
-// TALONS NEWS - Cron Job: Fetch & Score News
-// Route: /api/cron/fetch-news
-// Schedule: every 5 minutes via vercel.json
-// ============================================================
-
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { fetchAllNews } from '@/lib/news/fetcher'
 import { scoreArticle } from '@/lib/scoring'
 import { matchTokensInText } from '@/lib/matching'
 import { TOP_TOKENS } from '@/lib/tokens'
 
-export const maxDuration = 60 // Vercel max for hobby plan
+export const maxDuration = 60
 
-export async function GET(req: NextRequest) {
-  // Authenticate cron requests
-  const authHeader = req.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+export async function POST() {
   const startTime = Date.now()
   let inserted = 0
   let skipped = 0
   let errors = 0
 
   try {
-    // 1. Ensure all tokens are seeded in DB
     await seedTokensIfNeeded()
 
-    // 2. Fetch raw news from all sources
     const rawArticles = await fetchAllNews()
-    console.log(`[Cron] Fetched ${rawArticles.length} raw articles`)
+    console.log(`[Sync] Fetched ${rawArticles.length} raw articles`)
 
-    // 3. Get existing url hashes to skip duplicates
     const existingHashes = new Set(
-      (await prisma.news.findMany({ select: { urlHash: true } }))
-        .map(n => n.urlHash)
+      (await prisma.news.findMany({ select: { urlHash: true } })).map(n => n.urlHash)
     )
 
-    // 4. Get all tokens from DB for impact linking
     const dbTokens = await prisma.token.findMany()
     const tokenMap = new Map(dbTokens.map(t => [t.symbol, t]))
 
-    // 5. Process each article
     for (const article of rawArticles) {
       if (existingHashes.has(article.urlHash)) {
         skipped++
@@ -53,17 +33,8 @@ export async function GET(req: NextRequest) {
       }
 
       try {
-        // Score the article
-        const score = scoreArticle({
-          title: article.title,
-          content: article.content,
-          source: article.source,
-        })
-
-        // Match tokens
         const tokenMatches = matchTokensInText(article.title, article.content)
 
-        // Determine best marketCapTier for source weight
         const primaryMatch = tokenMatches[0]
         const refinedScore = scoreArticle({
           title: article.title,
@@ -72,7 +43,6 @@ export async function GET(req: NextRequest) {
           marketCapTier: primaryMatch?.token.marketCapTier,
         })
 
-        // Save news + impacts in one transaction
         await prisma.$transaction(async (tx) => {
           const savedNews = await tx.news.create({
             data: {
@@ -88,7 +58,6 @@ export async function GET(req: NextRequest) {
             },
           })
 
-          // Create token impact records
           for (const match of tokenMatches) {
             const dbToken = tokenMap.get(match.token.symbol)
             if (!dbToken) continue
@@ -107,20 +76,20 @@ export async function GET(req: NextRequest) {
         inserted++
         existingHashes.add(article.urlHash)
       } catch (err) {
-        console.error(`[Cron] Error processing article "${article.title}":`, err)
+        console.error(`[Sync] Error processing article "${article.title}":`, err)
         errors++
       }
     }
 
     const duration = Date.now() - startTime
-    console.log(`[Cron] Done in ${duration}ms: +${inserted} new, ${skipped} skipped, ${errors} errors`)
+    console.log(`[Sync] Done in ${duration}ms: +${inserted} new, ${skipped} skipped, ${errors} errors`)
 
     return NextResponse.json({
       success: true,
       stats: { inserted, skipped, errors, durationMs: duration },
     })
   } catch (err) {
-    console.error('[Cron] Fatal error:', err)
+    console.error('[Sync] Fatal error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -141,5 +110,5 @@ async function seedTokensIfNeeded() {
       },
     })
   }
-  console.log(`[Cron] Seeded ${TOP_TOKENS.length} tokens`)
+  console.log(`[Sync] Seeded ${TOP_TOKENS.length} tokens`)
 }
